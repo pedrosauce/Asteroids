@@ -5,15 +5,13 @@ import javafx.application.Application;
 import javafx.geometry.Point2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 public class AsteroidsApp extends Application {
@@ -22,8 +20,12 @@ public class AsteroidsApp extends Application {
 
     private List<GameObject> bullets = new ArrayList<>();
     private List<GameObject> enemies = new ArrayList<>();
-
+    private Set<String> pressed = new HashSet<String>();
     private GameObject player;
+    private AnimationTimer timer;
+    private Double bulletTime = 0.0;
+    private Double bulletFinal = 0.0;
+    private Double lambdaBulletTime = (0.5) * 1000000000; // Change this to alter hwo fast you can shoot bullets. The number before * is seconds
 
     private Parent createContent() {
         root = new Pane();
@@ -33,7 +35,7 @@ public class AsteroidsApp extends Application {
         player.setVelocity(new Point2D(1, 0));
         addGameObject(player, 300, 300);
 
-        AnimationTimer timer = new AnimationTimer() {
+        timer = new AnimationTimer() {
             @Override
             public void handle(long now) {
                 onUpdate();
@@ -59,7 +61,34 @@ public class AsteroidsApp extends Application {
         root.getChildren().add(object.getView());
     }
 
+    private void shootBullet(){
+        bulletTime = (double) System.nanoTime();
+        if(bulletTime > bulletFinal) {
+            bulletFinal = bulletTime + lambdaBulletTime;
+            Bullet bullet = new Bullet();
+            bullet.setVelocity(player.getVelocity().normalize().multiply(5));
+            addBullet(bullet, player.getView().getTranslateX(), player.getView().getTranslateY());
+        }
+    }
+
     private void onUpdate() {
+
+        Iterator<String> it = pressed.iterator();
+
+        while(it.hasNext()){
+            String current = it.next();
+            if("A".equals(current) || "LEFT".equals(current)){
+                player.rotateLeft();
+            }
+            if("D".equals(current) || "RIGHT".equals(current)){
+                player.rotateRight();
+            }
+            if("SPACE".equals(current)){
+                shootBullet();
+            }
+            System.out.println();
+        }
+
         for (GameObject bullet : bullets) {
             for (GameObject enemy : enemies) {
                 if (bullet.isColliding(enemy)) {
@@ -102,20 +131,21 @@ public class AsteroidsApp extends Application {
         }
     }
 
+    public Scene setEventListeners(Scene scene){
+        scene.setOnKeyPressed(e -> {
+            pressed.add(e.getCode().toString());
+        });
+        scene.setOnKeyReleased(e -> {
+            pressed.remove(e.getCode().toString());
+        });
+        return scene;
+    }
+
     @Override
     public void start(Stage stage) throws Exception {
         stage.setScene(new Scene(createContent()));
-        stage.getScene().setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.LEFT) {
-                player.rotateLeft();
-            } else if (e.getCode() == KeyCode.RIGHT) {
-                player.rotateRight();
-            } else if (e.getCode() == KeyCode.SPACE) {
-                Bullet bullet = new Bullet();
-                bullet.setVelocity(player.getVelocity().normalize().multiply(5));
-                addBullet(bullet, player.getView().getTranslateX(), player.getView().getTranslateY());
-            }
-        });
+        stage.setScene(setEventListeners(stage.getScene()));
+
         stage.show();
     }
 
